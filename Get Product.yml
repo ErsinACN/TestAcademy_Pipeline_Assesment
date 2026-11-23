@@ -1,0 +1,328 @@
+info:
+  name: Get Product
+  type: http
+  seq: 3
+
+http:
+  method: GET
+  url: https://api.qaautomationlabs.com/v1/products/1
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        const body = res.getBody();
+        const product = body.data;
+        const meta = body.meta;
+
+        const requiredFields = [
+          "id",
+          "name",
+          "sku",
+          "category",
+          "price",
+          "currency",
+          "stock",
+          "rating",
+          "status",
+          "createdAt"
+        ];
+
+        const requiredMetaFields = [
+          "requestId",
+          "responseTimeMs",
+          "timestamp",
+          "apiVersion"
+        ];
+
+        const allowedStatuses = [
+          "active",
+          "out_of_stock",
+          "discontinued"
+        ];
+
+        /*
+         * TC01
+         * Verify successful response status.
+         */
+        test("TC01 - Status code should be 200", function () {
+          expect(res.getStatus()).to.equal(200);
+        });
+
+        /*
+         * TC02
+         * Verify that the response content type is JSON.
+         */
+        test("TC02 - Content-Type should be application/json", function () {
+          const contentType = res.getHeader("content-type");
+
+          expect(contentType).to.be.a("string");
+          expect(contentType.toLowerCase()).to.include("application/json");
+        });
+
+        /*
+         * TC03
+         * Verify that the response body is an object.
+         */
+        test("TC03 - Response body should be an object", function () {
+          expect(body).to.be.an("object");
+          expect(body).to.not.be.an("array");
+        });
+
+        /*
+         * TC04
+         * Verify that data and meta objects are returned.
+         */
+        test("TC04 - Response should contain data and meta objects", function () {
+          expect(body).to.have.property("data");
+          expect(body.data).to.be.an("object");
+          expect(body.data).to.not.be.an("array");
+          expect(body.data).to.not.deep.equal({});
+
+          expect(body).to.have.property("meta");
+          expect(body.meta).to.be.an("object");
+          expect(body.meta).to.not.be.an("array");
+        });
+
+        /*
+         * TC05
+         * Verify that all expected product fields are returned.
+         */
+        test("TC05 - Product should contain all required fields", function () {
+          requiredFields.forEach(function (field) {
+            expect(
+              product,
+              `Product response is missing field '${field}'`
+            ).to.have.property(field);
+          });
+        });
+
+        /*
+         * TC06
+         * Verify that the returned product ID matches the requested ID.
+         */
+        test("TC06 - Returned product ID should be 1", function () {
+          expect(product.id).to.equal(1);
+        });
+
+        /*
+         * TC07
+         * Verify that the product ID is a positive integer.
+         */
+        test("TC07 - Product ID should be a positive integer", function () {
+          expect(product.id).to.be.a("number");
+          expect(Number.isInteger(product.id)).to.equal(true);
+          expect(product.id).to.be.greaterThan(0);
+        });
+
+        /*
+         * TC08
+         * Verify that the product name is a non-empty string.
+         */
+        test("TC08 - Product name should be a non-empty string", function () {
+          expect(product.name).to.be.a("string");
+          expect(product.name.trim()).to.not.equal("");
+        });
+
+        /*
+         * TC09
+         * Verify the product SKU format.
+         */
+        test("TC09 - SKU should follow the SKU-XXXXX format", function () {
+          expect(product.sku).to.be.a("string");
+          expect(product.sku).to.match(/^SKU-\d{5}$/);
+        });
+
+        /*
+         * TC10
+         * Verify that the category is a non-empty string.
+         */
+        test("TC10 - Category should be a non-empty string", function () {
+          expect(product.category).to.be.a("string");
+          expect(product.category.trim()).to.not.equal("");
+        });
+
+        /*
+         * TC11
+         * Verify that the price is a positive number.
+         */
+        test("TC11 - Price should be a positive number", function () {
+          expect(product.price).to.be.a("number");
+          expect(product.price).to.be.greaterThan(0);
+        });
+
+        /*
+         * TC12
+         * Verify that the price has at most two decimal places.
+         */
+        test("TC12 - Price should have at most two decimal places", function () {
+          const decimalPlaces =
+            (product.price.toString().split(".")[1] || "").length;
+
+          expect(decimalPlaces).to.be.at.most(2);
+        });
+
+        /*
+         * TC13
+         * Verify that the product currency is USD.
+         */
+        test("TC13 - Currency should be USD", function () {
+          expect(product.currency).to.be.a("string");
+          expect(product.currency).to.equal("USD");
+        });
+
+        /*
+         * TC14
+         * Verify that stock is a non-negative integer.
+         */
+        test("TC14 - Stock should be a non-negative integer", function () {
+          expect(product.stock).to.be.a("number");
+          expect(Number.isInteger(product.stock)).to.equal(true);
+          expect(product.stock).to.be.at.least(0);
+        });
+
+        /*
+         * TC15
+         * Verify that the rating is between 0 and 5.
+         */
+        test("TC15 - Rating should be between 0 and 5", function () {
+          expect(product.rating).to.be.a("number");
+          expect(product.rating).to.be.within(0, 5);
+        });
+
+        /*
+         * TC16
+         * Verify that the returned product status is supported.
+         */
+        test("TC16 - Status should be an allowed value", function () {
+          expect(product.status).to.be.a("string");
+          expect(allowedStatuses).to.include(product.status);
+        });
+
+        /*
+         * TC17
+         * Verify consistency between stock and status.
+         */
+        test("TC17 - Product stock should be consistent with status", function () {
+          if (product.status === "out_of_stock") {
+            expect(product.stock).to.equal(0);
+          }
+
+          if (product.status === "active") {
+            expect(product.stock).to.be.greaterThan(0);
+          }
+        });
+
+        /*
+         * TC18
+         * Verify the createdAt timestamp.
+         */
+        test("TC18 - createdAt should be a valid ISO timestamp", function () {
+          expect(product.createdAt).to.be.a("string");
+          expect(Number.isNaN(Date.parse(product.createdAt))).to.equal(false);
+
+          const isoTimestampPattern =
+            /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
+
+          expect(product.createdAt).to.match(isoTimestampPattern);
+        });
+
+        /*
+         * TC19
+         * Verify that createdAt is not in the future.
+         */
+        test("TC19 - createdAt should not be in the future", function () {
+          const createdTimestamp = Date.parse(product.createdAt);
+          const currentTimestamp = Date.now();
+
+          expect(createdTimestamp).to.be.at.most(currentTimestamp + 5000);
+        });
+
+        /*
+         * TC20
+         * Verify that the response does not expose sensitive fields.
+         */
+        test("TC20 - Response should not expose sensitive fields", function () {
+          expect(product).to.not.have.property("password");
+          expect(product).to.not.have.property("apiKey");
+          expect(product).to.not.have.property("secret");
+          expect(product).to.not.have.property("internalToken");
+
+          expect(body).to.not.have.property("password");
+          expect(body).to.not.have.property("apiKey");
+          expect(body).to.not.have.property("secret");
+          expect(body).to.not.have.property("internalToken");
+        });
+
+        /*
+         * TC21
+         * Verify that all required metadata fields are returned.
+         */
+        test("TC21 - Meta should contain all required fields", function () {
+          requiredMetaFields.forEach(function (field) {
+            expect(
+              meta,
+              `Meta response is missing field '${field}'`
+            ).to.have.property(field);
+          });
+        });
+
+        /*
+         * TC22
+         * Verify requestId format.
+         */
+        test("TC22 - requestId should have a valid format", function () {
+          expect(meta.requestId).to.be.a("string");
+          expect(meta.requestId).to.match(/^req_[a-zA-Z0-9]+$/);
+        });
+
+        /*
+         * TC23
+         * Verify responseTimeMs.
+         */
+        test("TC23 - responseTimeMs should be a non-negative number", function () {
+          expect(meta.responseTimeMs).to.be.a("number");
+          expect(meta.responseTimeMs).to.be.at.least(0);
+        });
+
+        /*
+         * TC24
+         * Verify response metadata timestamp.
+         */
+        test("TC24 - Meta timestamp should be a valid ISO timestamp", function () {
+          expect(meta.timestamp).to.be.a("string");
+          expect(Number.isNaN(Date.parse(meta.timestamp))).to.equal(false);
+
+          const isoTimestampPattern =
+            /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
+
+          expect(meta.timestamp).to.match(isoTimestampPattern);
+        });
+
+        /*
+         * TC25
+         * Verify that the metadata timestamp is not in the future.
+         */
+        test("TC25 - Meta timestamp should not be in the future", function () {
+          const responseTimestamp = Date.parse(meta.timestamp);
+          const currentTimestamp = Date.now();
+
+          expect(responseTimestamp).to.be.at.most(currentTimestamp + 5000);
+        });
+
+        /*
+         * TC26
+         * Verify API version.
+         */
+        test("TC26 - API version should be 1.0.0", function () {
+          expect(meta.apiVersion).to.be.a("string");
+          expect(meta.apiVersion).to.equal("1.0.0");
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false

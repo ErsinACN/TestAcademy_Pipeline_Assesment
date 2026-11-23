@@ -1,0 +1,302 @@
+info:
+  name: Get Products
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: https://api.qaautomationlabs.com/v1/products?page=1&limit=10
+  headers:
+    - name: Accept
+      value: application/json
+  params:
+    - name: page
+      value: "1"
+      type: query
+    - name: limit
+      value: "10"
+      type: query
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        const body = res.getBody();
+        const products = body.data;
+        const pagination = body.pagination;
+        const meta = body.meta;
+
+        const allowedStatuses = [
+          "active",
+          "out_of_stock",
+          "discontinued"
+        ];
+
+        const expectedProductFields = [
+          "id",
+          "name",
+          "sku",
+          "category",
+          "price",
+          "currency",
+          "stock",
+          "rating",
+          "status",
+          "createdAt"
+        ];
+
+        /*
+         * TC01
+         * Verify that the endpoint returns HTTP 200.
+         */
+        test("TC01 - Status code should be 200", function () {
+          expect(res.getStatus()).to.equal(200);
+        });
+
+        /*
+         * TC02
+         * Verify that the response content type is JSON.
+         */
+        test("TC02 - Content-Type should be application/json", function () {
+          const contentType = res.getHeader("content-type");
+
+          expect(contentType).to.be.a("string");
+          expect(contentType.toLowerCase()).to.include("application/json");
+        });
+
+        /*
+         * TC03
+         * Verify that the response body is a JSON object.
+         */
+        test("TC03 - Response body should be a JSON object", function () {
+          expect(body).to.be.an("object");
+          expect(body).to.not.be.an("array");
+        });
+
+        /*
+         * TC04
+         * Verify that the top-level response properties exist.
+         */
+        test("TC04 - Response should contain data, pagination, and meta", function () {
+          expect(body).to.have.property("data");
+          expect(body).to.have.property("pagination");
+          expect(body).to.have.property("meta");
+        });
+
+        /*
+         * TC05
+         * Verify that data is returned as an array.
+         */
+        test("TC05 - Data should be an array", function () {
+          expect(products).to.be.an("array");
+        });
+
+        /*
+         * TC06
+         * Verify that the number of returned products matches the requested limit.
+         */
+        test("TC06 - Data should contain 10 products", function () {
+          expect(products).to.have.lengthOf(10);
+        });
+
+        /*
+         * TC07
+         * Verify that every product contains all mandatory properties.
+         */
+        test("TC07 - Every product should contain all required fields", function () {
+          products.forEach(function (product) {
+            expectedProductFields.forEach(function (field) {
+              expect(
+                product,
+                `Product ${product.id} is missing field '${field}'`
+              ).to.have.property(field);
+            });
+          });
+        });
+
+        /*
+         * TC08
+         * Verify that every product ID is a positive integer.
+         */
+        test("TC08 - Product IDs should be positive integers", function () {
+          products.forEach(function (product) {
+            expect(product.id).to.be.a("number");
+            expect(Number.isInteger(product.id)).to.equal(true);
+            expect(product.id).to.be.greaterThan(0);
+          });
+        });
+
+        /*
+         * TC09
+         * Verify that product IDs are unique within the response.
+         */
+        test("TC09 - Product IDs should be unique", function () {
+          const ids = products.map(function (product) {
+            return product.id;
+          });
+
+          expect(new Set(ids).size).to.equal(ids.length);
+        });
+
+        /*
+         * TC10
+         * Verify that every product name is a non-empty string.
+         */
+        test("TC10 - Product names should be non-empty strings", function () {
+          products.forEach(function (product) {
+            expect(product.name).to.be.a("string");
+            expect(product.name.trim()).to.not.equal("");
+          });
+        });
+
+        /*
+         * TC11
+         * Verify that SKUs follow the expected SKU-XXXXX pattern.
+         */
+        test("TC11 - SKU should follow the SKU-XXXXX format", function () {
+          const skuPattern = /^SKU-\d{5}$/;
+
+          products.forEach(function (product) {
+            expect(product.sku).to.be.a("string");
+            expect(
+              product.sku,
+              `Invalid SKU format for product ${product.id}`
+            ).to.match(skuPattern);
+          });
+        });
+
+        /*
+         * TC12
+         * Verify that SKUs are unique within the response.
+         */
+        test("TC12 - Product SKUs should be unique", function () {
+          const skus = products.map(function (product) {
+            return product.sku;
+          });
+
+          expect(new Set(skus).size).to.equal(skus.length);
+        });
+
+        /*
+         * TC13
+         * Verify that every category is a non-empty string.
+         */
+        test("TC13 - Categories should be non-empty strings", function () {
+          products.forEach(function (product) {
+            expect(product.category).to.be.a("string");
+            expect(product.category.trim()).to.not.equal("");
+          });
+        });
+
+        /*
+         * TC14
+         * Verify that every product price is numeric and greater than zero.
+         */
+        test("TC14 - Prices should be positive numbers", function () {
+          products.forEach(function (product) {
+            expect(product.price).to.be.a("number");
+            expect(
+              product.price,
+              `Invalid price for product ${product.id}`
+            ).to.be.greaterThan(0);
+          });
+        });
+
+        /*
+         * TC15
+         * Verify that all products use USD.
+         */
+        test("TC15 - Product currency should be USD", function () {
+          products.forEach(function (product) {
+            expect(product.currency).to.equal("USD");
+          });
+        });
+
+        /*
+         * TC16
+         * Verify that stock values are non-negative integers.
+         */
+        test("TC16 - Stock should be a non-negative integer", function () {
+          products.forEach(function (product) {
+            expect(product.stock).to.be.a("number");
+            expect(Number.isInteger(product.stock)).to.equal(true);
+            expect(
+              product.stock,
+              `Negative stock for product ${product.id}`
+            ).to.be.at.least(0);
+          });
+        });
+
+        /*
+         * TC17
+         * Verify that product ratings are between 0 and 5.
+         */
+        test("TC17 - Rating should be between 0 and 5", function () {
+          products.forEach(function (product) {
+            expect(product.rating).to.be.a("number");
+            expect(
+              product.rating,
+              `Invalid rating for product ${product.id}`
+            ).to.be.within(0, 5);
+          });
+        });
+
+        /*
+         * TC18
+         * Verify that product statuses contain supported values.
+         */
+        test("TC18 - Status should be an allowed value", function () {
+          products.forEach(function (product) {
+            expect(
+              allowedStatuses,
+              `Unsupported status for product ${product.id}`
+            ).to.include(product.status);
+          });
+        });
+
+        /*
+         * TC19
+         * Verify the pagination information.
+         */
+        test("TC19 - Pagination should match page 1 and limit 10", function () {
+          expect(pagination).to.be.an("object");
+          expect(pagination.page).to.equal(1);
+          expect(pagination.pageSize).to.equal(10);
+          expect(pagination.totalItems).to.equal(60);
+          expect(pagination.totalPages).to.equal(6);
+          expect(pagination.hasNext).to.equal(true);
+          expect(pagination.hasPrev).to.equal(false);
+
+          const calculatedTotalPages = Math.ceil(
+            pagination.totalItems / pagination.pageSize
+          );
+
+          expect(pagination.totalPages).to.equal(calculatedTotalPages);
+        });
+
+        /*
+         * TC20
+         * Verify the metadata structure and values.
+         */
+        test("TC20 - Metadata should contain valid response information", function () {
+          expect(meta).to.be.an("object");
+
+          expect(meta.requestId).to.be.a("string");
+          expect(meta.requestId).to.match(/^req_[a-zA-Z0-9]+$/);
+
+          expect(meta.responseTimeMs).to.be.a("number");
+          expect(meta.responseTimeMs).to.be.at.least(0);
+
+          expect(meta.timestamp).to.be.a("string");
+          expect(Date.parse(meta.timestamp)).to.not.be.NaN;
+
+          expect(meta.apiVersion).to.equal("1.0.0");
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false

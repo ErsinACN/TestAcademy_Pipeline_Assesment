@@ -1,0 +1,273 @@
+info:
+  name: Create Product
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: https://api.qaautomationlabs.com/v1/products
+  body:
+    type: json
+    data: |-
+      {
+        "name": "Nebula Keyboard",
+        "price": 129.99,
+        "category": "Peripherals",
+        "stock": 40
+      }
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        const body = res.getBody();
+        const product = body.data;
+        const meta = body.meta;
+
+        const expectedProduct = {
+          name: "Nebula Keyboard",
+          price: 129.99,
+          category: "Peripherals",
+          stock: 40
+        };
+
+        const requiredProductFields = [
+          "id",
+          "name",
+          "price",
+          "category",
+          "stock",
+          "createdAt"
+        ];
+
+        const requiredMetaFields = [
+          "requestId",
+          "responseTimeMs",
+          "timestamp",
+          "apiVersion"
+        ];
+
+        /*
+         * TC01
+         * Verify successful product creation status.
+         */
+        test("TC01 - Status code should be 201", function () {
+          expect(res.getStatus()).to.equal(201);
+        });
+
+        /*
+         * TC02
+         * Verify that the response content type is JSON.
+         */
+        test("TC02 - Content-Type should be application/json", function () {
+          const contentType = res.getHeader("content-type");
+
+          expect(contentType).to.be.a("string");
+          expect(contentType.toLowerCase()).to.include("application/json");
+        });
+
+        /*
+         * TC03
+         * Verify that the response body is an object.
+         */
+        test("TC03 - Response body should be an object", function () {
+          expect(body).to.be.an("object");
+          expect(body).to.not.be.an("array");
+        });
+
+        /*
+         * TC04
+         * Verify that the response body contains data and meta objects.
+         */
+        test("TC04 - Response body should contain data and meta objects", function () {
+          expect(body).to.have.property("data");
+          expect(body.data).to.be.an("object");
+          expect(body.data).to.not.be.an("array");
+
+          expect(body).to.have.property("meta");
+          expect(body.meta).to.be.an("object");
+          expect(body.meta).to.not.be.an("array");
+        });
+
+        /*
+         * TC05
+         * Verify that the created product contains all required fields.
+         */
+        test("TC05 - Created product should contain required fields", function () {
+          requiredProductFields.forEach(function (field) {
+            expect(
+              product,
+              `Product is missing required field '${field}'`
+            ).to.have.property(field);
+          });
+        });
+
+        /*
+         * TC06
+         * Verify that the generated ID is a positive integer.
+         */
+        test("TC06 - Product ID should be a positive integer", function () {
+          expect(product.id).to.be.a("number");
+          expect(Number.isInteger(product.id)).to.equal(true);
+          expect(product.id).to.be.greaterThan(0);
+        });
+
+        /*
+         * TC07
+         * Verify that the returned name matches the submitted name.
+         */
+        test("TC07 - Product name should match the request", function () {
+          expect(product.name).to.equal(expectedProduct.name);
+        });
+
+        /*
+         * TC08
+         * Verify that the returned product name is a non-empty string.
+         */
+        test("TC08 - Product name should be a non-empty string", function () {
+          expect(product.name).to.be.a("string");
+          expect(product.name.trim()).to.not.equal("");
+        });
+
+        /*
+         * TC09
+         * Verify that the returned price matches the submitted price.
+         */
+        test("TC09 - Product price should match the request", function () {
+          expect(product.price).to.equal(expectedProduct.price);
+        });
+
+        /*
+         * TC10
+         * Verify that the returned price is a positive number.
+         */
+        test("TC10 - Product price should be a positive number", function () {
+          expect(product.price).to.be.a("number");
+          expect(product.price).to.be.greaterThan(0);
+        });
+
+        /*
+         * TC11
+         * Verify that the price does not have more than two decimal places.
+         */
+        test("TC11 - Product price should have at most two decimal places", function () {
+          const decimalPlaces =
+            (product.price.toString().split(".")[1] || "").length;
+
+          expect(decimalPlaces).to.be.at.most(2);
+        });
+
+        /*
+         * TC12
+         * Verify that the returned category matches the submitted category.
+         */
+        test("TC12 - Product category should match the request", function () {
+          expect(product.category).to.equal(expectedProduct.category);
+        });
+
+        /*
+         * TC13
+         * Verify that the returned category is a non-empty string.
+         */
+        test("TC13 - Product category should be a non-empty string", function () {
+          expect(product.category).to.be.a("string");
+          expect(product.category.trim()).to.not.equal("");
+        });
+
+        /*
+         * TC14
+         * Verify that the returned stock matches the submitted stock.
+         */
+        test("TC14 - Product stock should match the request", function () {
+          expect(product.stock).to.equal(expectedProduct.stock);
+        });
+
+        /*
+         * TC15
+         * Verify that stock is a non-negative integer.
+         */
+        test("TC15 - Product stock should be a non-negative integer", function () {
+          expect(product.stock).to.be.a("number");
+          expect(Number.isInteger(product.stock)).to.equal(true);
+          expect(product.stock).to.be.at.least(0);
+        });
+
+        /*
+         * TC16
+         * Verify that the response does not expose sensitive properties.
+         */
+        test("TC16 - Product should not expose sensitive fields", function () {
+          expect(product).to.not.have.property("password");
+          expect(product).to.not.have.property("apiKey");
+          expect(product).to.not.have.property("secret");
+        });
+
+        /*
+         * TC17
+         * Verify createdAt is a valid timestamp.
+         */
+        test("TC17 - createdAt should be a valid timestamp", function () {
+          expect(product.createdAt).to.be.a("string");
+          expect(Number.isNaN(Date.parse(product.createdAt))).to.equal(false);
+
+          const createdTimestamp = Date.parse(product.createdAt);
+          const currentTimestamp = Date.now();
+
+          expect(createdTimestamp).to.be.at.most(currentTimestamp + 5000);
+        });
+
+        /*
+         * TC18
+         * Verify that meta contains all required fields.
+         */
+        test("TC18 - Meta should contain required fields", function () {
+          requiredMetaFields.forEach(function (field) {
+            expect(
+              meta,
+              `Meta is missing required field '${field}'`
+            ).to.have.property(field);
+          });
+        });
+
+        /*
+         * TC19
+         * Verify requestId format.
+         */
+        test("TC19 - requestId should have a valid format", function () {
+          expect(meta.requestId).to.be.a("string");
+          expect(meta.requestId).to.match(/^req_[a-zA-Z0-9]+$/);
+        });
+
+        /*
+         * TC20
+         * Verify response time is a non-negative number.
+         */
+        test("TC20 - responseTimeMs should be a non-negative number", function () {
+          expect(meta.responseTimeMs).to.be.a("number");
+          expect(meta.responseTimeMs).to.be.at.least(0);
+        });
+
+        /*
+         * TC21
+         * Verify meta timestamp is valid.
+         */
+        test("TC21 - Meta timestamp should be a valid timestamp", function () {
+          expect(meta.timestamp).to.be.a("string");
+          expect(Number.isNaN(Date.parse(meta.timestamp))).to.equal(false);
+        });
+
+        /*
+         * TC22
+         * Verify API version.
+         */
+        test("TC22 - API version should be 1.0.0", function () {
+          expect(meta.apiVersion).to.equal("1.0.0");
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false

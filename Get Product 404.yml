@@ -1,0 +1,50 @@
+info:
+  name: Get Product 404
+  type: http
+  seq: 4
+
+http:
+  method: GET
+  url: https://api.qaautomationlabs.com/v1/products/99999999
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        const body = res.getBody();
+
+        test("Missing product should return 404", function () {
+          expect(res.getStatus()).to.equal(404);
+        });
+
+        test("404 response should be JSON", function () {
+          const contentType = res.getHeader("content-type");
+
+          expect(contentType).to.be.a("string");
+          expect(contentType.toLowerCase()).to.include("application/json");
+        });
+
+        test("404 response should contain error information", function () {
+          expect(body).to.be.an("object");
+
+          const hasErrorInformation =
+            Object.prototype.hasOwnProperty.call(body, "error") ||
+            Object.prototype.hasOwnProperty.call(body, "message") ||
+            Object.prototype.hasOwnProperty.call(body, "detail");
+
+          expect(hasErrorInformation).to.equal(true);
+        });
+
+        test("404 response should not contain product data", function () {
+          expect(body).to.not.have.property("price");
+          expect(body).to.not.have.property("stock");
+          expect(body).to.not.have.property("sku");
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
