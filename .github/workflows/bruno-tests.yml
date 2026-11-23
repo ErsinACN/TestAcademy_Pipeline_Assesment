@@ -1,0 +1,85 @@
+name: Bruno API Tests
+
+on:
+  push:
+    branches:
+      - main
+
+  pull_request:
+    branches:
+      - main
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  test:
+    name: Run Bruno Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Run Bruno tests
+        id: bruno
+        continue-on-error: true
+        uses: usebruno/bruno-cli-action@v1
+        with:
+          working-directory: .
+          command: 'run --reporter-html report.html'
+
+      - name: Prepare GitHub Pages
+        if: always()
+        run: |
+          mkdir -p site
+          cp report.html site/index.html
+
+      - name: Upload HTML report as workflow artifact
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: bruno-html-report
+          path: report.html
+          if-no-files-found: error
+
+      - name: Configure GitHub Pages
+        if: github.event_name != 'pull_request'
+        uses: actions/configure-pages@v5
+
+      - name: Upload GitHub Pages artifact
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+
+      - name: Fail workflow if Bruno tests failed
+        if: steps.bruno.outcome == 'failure'
+        run: exit 1
+
+  deploy:
+    name: Deploy Bruno Report
+    if: github.event_name != 'pull_request' && always()
+    needs: test
+    runs-on: ubuntu-latest
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    permissions:
+      pages: write
+      id-token: write
+
+    steps:
+      - name: Deploy report to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
