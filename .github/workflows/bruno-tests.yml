@@ -21,11 +21,13 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+
   test:
     name: Run Bruno Tests
     runs-on: ubuntu-latest
 
     steps:
+
       - name: Checkout repository
         uses: actions/checkout@v6
 
@@ -34,21 +36,21 @@ jobs:
         continue-on-error: true
         uses: usebruno/bruno-cli-action@v1
         with:
-          working-directory: .
+          working-directory: bruno
           command: 'run --reporter-html report.html'
 
       - name: Prepare GitHub Pages
         if: always()
         run: |
           mkdir -p site
-          cp report.html site/index.html
+          cp bruno/report.html site/index.html
 
-      - name: Upload HTML report as workflow artifact
+      - name: Upload Bruno HTML report
         if: always()
         uses: actions/upload-artifact@v6
         with:
           name: bruno-html-report
-          path: report.html
+          path: bruno/report.html
           if-no-files-found: error
 
       - name: Configure GitHub Pages
@@ -80,6 +82,7 @@ jobs:
       id-token: write
 
     steps:
-      - name: Deploy report to GitHub Pages
+
+      - name: Deploy Bruno report
         id: deployment
         uses: actions/deploy-pages@v4
